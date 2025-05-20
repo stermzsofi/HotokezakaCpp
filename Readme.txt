@@ -38,7 +38,7 @@ Parameter file
   	- vt [km/s]: typical turbulent velocity
   	- tau [Myr]: mean life of the element
   	- number_of_runs: the number of calculated random examples
-  	- rate_function: the used event rate function. Currently usable: Wanderman (Wanderman, D. & Piran, T., 2015) and Hopkins (Hopkins, A. M. & Beacom, 2006)
+  	- rate_function: the used event rate function. Currently usable: Wanderman (Wanderman, D. & Piran, T., 2015) and Hopkins (Hopkins, A. M. & Beacom, 2006) and Constant (Constant rate density at all time)
   	- Ni_calc_method: set the method for calculation Ni, where Ni is the total number of atoms of isotope i ejected by each event. 
           Currently usable: Hotokezaka, Measurement, Number (for more details see Ni methods part of this readme)
   	- element_initial_prod_ratio: the initial production ratio of the element (compared to U238). only interesting if the Ni calculation method is Measurement

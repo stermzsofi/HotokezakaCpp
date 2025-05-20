@@ -122,6 +122,10 @@ void Read_In_Parameters::init()
     {
         rate_function.reset(new HopkinsRate(time_z));
     }
+    else if (read_in_rate_function == "Constant")
+    {
+        rate_function.reset(new ConstantRate());
+    }
     else
     {
         throw std::runtime_error("Unknown rate function "+read_in_rate_function);
@@ -407,6 +411,27 @@ void Rate_density::set_r0_rate_density_with_rate_density(double r0)
     {
         normalize_factor = r0_rate_density/(a*h);
     }
+
+    /********************Hopkins rate**************/
+
+    ConstantRate::ConstantRate(){}
+    
+    void ConstantRate::calc_normalize_factor()
+    {
+        normalize_factor = r0_rate_density;
+    }
+
+    double ConstantRate::get_rate_density_at_t([[maybe_unused]] double t)
+    {
+        return r0_rate_density;
+    }
+
+    double ConstantRate::get_rate_density_at_z([[maybe_unused]] double z)
+    {
+        return r0_rate_density;
+    }
+
+    
 
 /***Ni calculation functions*/
 

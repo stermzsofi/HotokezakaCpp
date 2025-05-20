@@ -74,6 +74,15 @@ class Rate_density : public Fx
             double a,b,c,d,h;
     };
 
+    class ConstantRate : public Rate_density
+    {
+        public:
+            ConstantRate();
+            double get_rate_density_at_z([[maybe_unused]] double z);
+            double get_rate_density_at_t([[maybe_unused]] double t);
+            void calc_normalize_factor();
+    };
+
 /*************************************************************/
 /********DIFFERENT Ni calculation methods ********************/
 /*************************************************************/
