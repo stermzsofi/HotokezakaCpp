@@ -104,6 +104,17 @@ void Read_In_Parameters::read_parameter_file()
         {
             out_file = value;
         }
+        else if("stable_izotope" == name)
+        {
+            if("true" == value)
+            {
+                stable_izotope = true;
+            }
+            else
+            {
+                stable_izotope = false;
+            }
+        }
         else
         {
             throw std::runtime_error("ERROR! Error with parameter file line: "+name +" " +value);
@@ -527,45 +538,179 @@ void Create_events_and_calc_number_density::calc_number_density_for_an_event()
     }
 }
 
+void Create_events_and_calc_number_density::calc_number_density_for_an_event(std::vector<double>& current_number_densities)
+{
+    //first: need an event
+    randomEvent event = create_random_event();
+    //some usable variable
+    double const_at_exp = - event.distance*event.distance/(4.0 * calculated_parameters.D);
+    double delta_tj, number_density;
+    //second: from the first sampling_time_points see all, if it < event.time, need calculating, else break
+    for(long unsigned int i = 0; i < sampling_time_points.size(); i++)
+    {
+        if(sampling_time_points[i] <= event.time)
+        {
+            delta_tj = event.time - sampling_time_points[i];
+            number_density = calculated_parameters.Ni/calc_Kj(delta_tj) * std::exp(const_at_exp/delta_tj - delta_tj/calculated_parameters.param.tau);
+            current_number_densities[i] += number_density;
+        }
+        else
+        {
+            break;
+        }
+    }
+}
+
+void Create_events_and_calc_number_density::calc_number_density_for_an_event(std::vector<double>& current_number_densities, std::vector<double>& current_number_densities_stable)
+{
+     //first: need an event
+    randomEvent event = create_random_event();
+    //some usable variable
+    double const_at_exp = - event.distance*event.distance/(4.0 * calculated_parameters.D);
+    double delta_tj, number_density, number_density_stable;
+    //second: from the first sampling_time_points see all, if it < event.time, need calculating, else break
+    for(long unsigned int i = 0; i < sampling_time_points.size(); i++)
+    {
+        if(sampling_time_points[i] <= event.time)
+        {
+            delta_tj = event.time - sampling_time_points[i];
+            number_density = calculated_parameters.Ni/calc_Kj(delta_tj) * std::exp(const_at_exp/delta_tj - delta_tj/calculated_parameters.param.tau);
+            number_density_stable = calculated_parameters.Ni/calc_Kj(delta_tj) * std::exp(const_at_exp/delta_tj);
+            current_number_densities[i] += number_density;
+            current_number_densities_stable[i] += number_density_stable;
+        }
+        else
+        {
+            break;
+        }
+    }
+}
+
 void Create_events_and_calc_number_density::allEvent_number_densities()
 {
     std::ofstream res;
     res.open(calculated_parameters.param.out_file);
-    for(long unsigned int i = 0; i < sampling_time_points.size(); i++)
+    if(!calculated_parameters.param.stable_izotope)
     {
-        res << sampling_time_points[i] << "\t";
-    }
-    res << std::endl;
-    std::cout << "Started to calculate median density" << std::endl;
-    for(long unsigned int i = 0; i < median_number_densities.size(); i++)
-    {
-        double rate_dens_i = calculated_parameters.param.rate_function->get_rate_density_at_t(sampling_time_points[i]);
-        double rate_i = calculated_parameters.rate_density_to_rate(rate_dens_i);
-        double taumix = 300.0 * std::pow(rate_i/10.0, -0.4) * std::pow(calculated_parameters.param.alpha/0.1,-0.6) * 
-             std::pow(calculated_parameters.param.vt/7.0, -0.6) * std::pow(calculated_parameters.param.h_scale/0.2,-0.6);
-        median_number_densities[i] = calculated_parameters.Ni * rate_dens_i * 
-                calculated_parameters.param.tau * std::exp(-taumix/(2.0*calculated_parameters.param.tau));
-    }
-    for(long unsigned int i = 0; i < median_number_densities.size(); i++)
-    {
-        res << median_number_densities[i] << "\t";
-    }
-    res << std::endl;
-    std::cout << "Started to create and calculate random events" << std::endl;
-    for(int i = 0; i < calculated_parameters.param.number_of_runs; i++)
-    {
-        //set all number_densities to 0
-        std::fill(number_densites.begin(), number_densites.end(), 0.0);
-        for(int j = 0; j < calculated_parameters.get_number_of_events(); j++)
+        for(long unsigned int i = 0; i < sampling_time_points.size(); i++)
         {
-            calc_number_density_for_an_event();
-        }
-        //write to output file
-        for(long unsigned int j = 0; j < number_densites.size(); j++)
-        {
-            res << number_densites[j] << "\t";
+            res << sampling_time_points[i] << "\t";
         }
         res << std::endl;
+        std::cout << "Started to calculate median density" << std::endl;
+        for(long unsigned int i = 0; i < median_number_densities.size(); i++)
+        {
+            double rate_dens_i = calculated_parameters.param.rate_function->get_rate_density_at_t(sampling_time_points[i]);
+            double rate_i = calculated_parameters.rate_density_to_rate(rate_dens_i);
+            double taumix = 300.0 * std::pow(rate_i/10.0, -0.4) * std::pow(calculated_parameters.param.alpha/0.1,-0.6) * 
+                std::pow(calculated_parameters.param.vt/7.0, -0.6) * std::pow(calculated_parameters.param.h_scale/0.2,-0.6);
+            median_number_densities[i] = calculated_parameters.Ni * rate_dens_i * 
+                    calculated_parameters.param.tau * std::exp(-taumix/(2.0*calculated_parameters.param.tau));
+        }
+        for(long unsigned int i = 0; i < median_number_densities.size(); i++)
+        {
+            res << median_number_densities[i] << "\t";
+        }
+        res << std::endl;
+        std::cout << "Started to create and calculate random events" << std::endl;
+        #pragma omp parallel for
+        for(int i = 0; i < calculated_parameters.param.number_of_runs; i++)
+        {
+            std::vector<double> local_number_densites(sampling_time_points.size(), 0.0);
+            //set all number_densities to 0
+            //std::fill(number_densites.begin(), number_densites.end(), 0.0);
+            for(int j = 0; j < calculated_parameters.get_number_of_events(); j++)
+            {
+                calc_number_density_for_an_event(local_number_densites);
+            }
+            //write to output file
+            if(local_number_densites.size() != sampling_time_points.size())
+            {
+                throw std::runtime_error("Baj van a local_number_densities méretével");
+            }
+            #pragma omp critical
+            {for(long unsigned int j = 0; j < local_number_densites.size(); j++)
+            {
+                res << local_number_densites[j] << "\t";
+            }
+            res << std::endl;}
+        }
+    }
+    else
+    {
+        //new string for output stable file
+        std::string output_stable, output;
+        output = calculated_parameters.param.out_file;
+        const std::string ext1 = ".dat";
+        const std::string ext2 = ".txt";
+
+        // Nézd meg, végződik-e .dat vagy .txt kiterjesztéssel
+        if (output.size() >= ext1.size() && output.compare(output.size() - ext1.size(), ext1.size(), ext1) == 0) {
+            // .dat végződés
+            output_stable = output.substr(0, output.size() - ext1.size()) + "_stable" + ext1;
+        } else if (output.size() >= ext2.size() && output.compare(output.size() - ext2.size(), ext2.size(), ext2) == 0) {
+            // .txt végződés
+            output_stable = output.substr(0, output.size() - ext2.size()) + "_stable" + ext2;
+        } else {
+            // Nincs ismert végződés
+            output_stable = output + "_stable";
+        }
+
+        //stable ofstream létrehozása és megnyitása
+        std::ofstream res_stable;
+        res_stable.open(output_stable);
+        for(long unsigned int i = 0; i < sampling_time_points.size(); i++)
+        {
+            res << sampling_time_points[i] << "\t";
+            res_stable << sampling_time_points[i] << "\t";
+        }
+        res << std::endl;
+        res_stable << std::endl;
+        std::cout << "Started to calculate median density" << std::endl;
+        for(long unsigned int i = 0; i < median_number_densities.size(); i++)
+        {
+            double rate_dens_i = calculated_parameters.param.rate_function->get_rate_density_at_t(sampling_time_points[i]);
+            double rate_i = calculated_parameters.rate_density_to_rate(rate_dens_i);
+            double taumix = 300.0 * std::pow(rate_i/10.0, -0.4) * std::pow(calculated_parameters.param.alpha/0.1,-0.6) * 
+                std::pow(calculated_parameters.param.vt/7.0, -0.6) * std::pow(calculated_parameters.param.h_scale/0.2,-0.6);
+            median_number_densities[i] = calculated_parameters.Ni * rate_dens_i * 
+                    calculated_parameters.param.tau * std::exp(-taumix/(2.0*calculated_parameters.param.tau));
+        }
+        for(long unsigned int i = 0; i < median_number_densities.size(); i++)
+        {
+            res << median_number_densities[i] << "\t";
+            //stable file: just write a 0 line for easyer plotting procedure
+            res_stable << "0" << "\t";  
+        }
+        res << std::endl;
+        res_stable << std::endl;
+        std::cout << "Started to create and calculate random events" << std::endl;
+        #pragma omp parallel for
+        for(int i = 0; i < calculated_parameters.param.number_of_runs; i++)
+        {
+            std::vector<double> local_number_densites(sampling_time_points.size(), 0.0);
+            std::vector<double> local_number_densities_stable(sampling_time_points.size(), 0.0);
+            //set all number_densities to 0
+            //std::fill(number_densites.begin(), number_densites.end(), 0.0);
+            for(int j = 0; j < calculated_parameters.get_number_of_events(); j++)
+            {
+                calc_number_density_for_an_event(local_number_densites, local_number_densities_stable);
+            }
+            //write to output file
+            if(local_number_densites.size() != sampling_time_points.size() || local_number_densities_stable.size() != sampling_time_points.size())
+            {
+                throw std::runtime_error("Baj van a local_number_densities méretével");
+            }
+            #pragma omp critical
+            {for(long unsigned int j = 0; j < local_number_densites.size(); j++)
+            {
+                res << local_number_densites[j] << "\t";
+                res_stable << local_number_densities_stable[j] << "\t";
+            }
+            res << std::endl;
+            res_stable << std::endl;}
+        }
+        res_stable.close();
     }
     res.close();
 }

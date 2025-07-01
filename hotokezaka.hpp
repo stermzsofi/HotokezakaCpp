@@ -159,6 +159,9 @@ struct Read_In_Parameters
     //output filename
     std::string out_file = "results.dat";
 
+    //bool: need stable izotope or not
+    bool stable_izotope = true;
+
     void read_parameter_file(); //Read the values based on parameter file and run init function
     void init();
         //- create rate_function based in read_in_rate_function string
@@ -236,6 +239,8 @@ class Create_events_and_calc_number_density
         std::vector<double> median_number_densities;
         randomEvent create_random_event();
         void calc_number_density_for_an_event();
+        void calc_number_density_for_an_event(std::vector<double>& current_number_densities);
+        void calc_number_density_for_an_event(std::vector<double>& current_number_densities, std::vector<double>& current_number_densities_stable);
         double calc_Kj(double delta_time);
         double const_for_Kj_1;
         double const_for_Kj_2;

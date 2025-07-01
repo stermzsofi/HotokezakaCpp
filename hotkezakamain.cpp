@@ -24,6 +24,13 @@ int main(int argc, char* argv[])
             std::cout << i << "\t" << calcParams.time_to_z(i) << std::endl;
         }*/
 
+        //redshift to time test
+        /*Time_redshift time_z = Time_redshift();
+        for(double z=0; z < 4.5; z+= 0.1)
+        {
+            std::cout << "z = " << z << "\t time = " << time_z.z_to_time(z) << std::endl;
+        }*/
+
         Create_events_and_calc_number_density calc(calcParams);
         calc.allEvent_number_densities();
     }
