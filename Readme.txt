@@ -42,6 +42,7 @@ Parameter file
   	- Ni_calc_method: set the method for calculation Ni, where Ni is the total number of atoms of isotope i ejected by each event. 
           Currently usable: Hotokezaka, Measurement, Number (for more details see Ni methods part of this readme)
   	- element_initial_prod_ratio: the initial production ratio of the element (compared to U238). only interesting if the Ni calculation method is Measurement
+  	- stable_izotope: calculate the stable izotope or not (true or false)
   	- output: optional, you can set the name of the output file
 
 *****************************************************

@@ -586,12 +586,32 @@ void Create_events_and_calc_number_density::calc_number_density_for_an_event(std
     }
 }
 
-void Create_events_and_calc_number_density::allEvent_number_densities()
+void Create_events_and_calc_number_density::print_parameters_to_outputfile(std::ofstream& out)
+{
+    out << "#hscale\t" << calculated_parameters.param.h_scale << std::endl;
+    out << "#r_Sun\t" << calculated_parameters.param.r_Sun << std::endl;
+    out << "#width\t" << calculated_parameters.param.width << std::endl;
+    out << "#rd\t" << calculated_parameters.param.rd << std::endl;
+    out << "#simulation_Time\t" << calculated_parameters.param.simulation_Time << std::endl;
+    out << "#r0_rate\t" << calculated_parameters.param.r0_rate << std::endl;
+    out << "#sampleDt\t" << calculated_parameters.param.sampleDt << std::endl; 
+    out << "#alpha\t" << calculated_parameters.param.alpha << std::endl;
+    out << "#vt\t" << calculated_parameters.param.vt << std::endl;
+    out << "#tau\t" << calculated_parameters.param.tau << std::endl;
+    out << "#number_of_runs\t" << calculated_parameters.param.number_of_runs << std::endl;
+    out << "#ni_calculation_method\t" << calculated_parameters.param.ni_calculation_method << std::endl;
+    out << "#read_in_rate_function\t" << calculated_parameters.param.read_in_rate_function << std::endl;
+    out << "#element_initial_production_ratio\t" << calculated_parameters.param.element_initial_production_ratio << std::endl;
+    out << "#Ni\t" << calculated_parameters.Ni << std::endl;
+}
+
+void Create_events_and_calc_number_density::allEvent_number_densities() 
 {
     std::ofstream res;
     res.open(calculated_parameters.param.out_file);
     if(!calculated_parameters.param.stable_izotope)
     {
+        print_parameters_to_outputfile(res);
         for(long unsigned int i = 0; i < sampling_time_points.size(); i++)
         {
             res << sampling_time_points[i] << "\t";
@@ -659,6 +679,8 @@ void Create_events_and_calc_number_density::allEvent_number_densities()
         //stable ofstream létrehozása és megnyitása
         std::ofstream res_stable;
         res_stable.open(output_stable);
+        print_parameters_to_outputfile(res);
+        print_parameters_to_outputfile(res_stable);
         for(long unsigned int i = 0; i < sampling_time_points.size(); i++)
         {
             res << sampling_time_points[i] << "\t";

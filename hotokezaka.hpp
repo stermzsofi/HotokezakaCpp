@@ -241,6 +241,7 @@ class Create_events_and_calc_number_density
         void calc_number_density_for_an_event();
         void calc_number_density_for_an_event(std::vector<double>& current_number_densities);
         void calc_number_density_for_an_event(std::vector<double>& current_number_densities, std::vector<double>& current_number_densities_stable);
+        void print_parameters_to_outputfile(std::ofstream& output);
         double calc_Kj(double delta_time);
         double const_for_Kj_1;
         double const_for_Kj_2;
