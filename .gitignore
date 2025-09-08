@@ -7,4 +7,14 @@ Trapezoidal_rule/*.o
 .vscode/*
 a.out
 *.docx
-
+*dat
+parameters.txt
+Tests/*
+r0_tau_grid/*
+r0_tau_grid_with_stable/*
+bas*.txt*
+gnuplot_scripts/*
+with_parallel
+without_paralell
+time_redshift_test
+Trapezoidal_rule/.deps
