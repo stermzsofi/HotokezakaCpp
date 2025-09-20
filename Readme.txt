@@ -2,6 +2,8 @@
 ******Compile the code*********************
 *******************************************
 
+g++ -fopenmp -Wall -Wextra -std=c++17 -O2 hotokezaka.cpp Linear_interpol/linear_interpol.cpp Trapezoidal_rule/trapezoidal.cpp hotkezakamain.cpp -o with_parallel
+
 First: compile the code
  - need to compile all files: 
  	 hotokezaka.cpp Linear_interpol/linear_interpol.cpp Trapezoidal_rule/trapezoidal.cpp hotkezakamain.cpp
