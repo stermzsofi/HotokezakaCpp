@@ -33,6 +33,7 @@ int main(int argc, char* argv[])
 
         Create_events_and_calc_number_density calc(calcParams);
         calc.allEvent_number_densities();
+        calc.allEvent_number_densities_new();
     }
     catch(const std::exception& e)
     {

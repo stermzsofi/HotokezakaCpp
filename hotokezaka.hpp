@@ -230,6 +230,7 @@ class Create_events_and_calc_number_density
     public:
         Create_events_and_calc_number_density(Calculated_Numbers_Based_on_read_in_parameters& calc_par);
         void allEvent_number_densities();
+        void allEvent_number_densities_new();
     private:
         std::uniform_real_distribution<double> rand_number_0_1;
         boost::random::laplace_distribution<double> rand_laplace;
@@ -237,11 +238,15 @@ class Create_events_and_calc_number_density
         std::vector<double> sampling_time_points;
         std::vector<double> number_densites;
         std::vector<double> median_number_densities;
+        std::vector<std::vector<double>> all_number_densities;
+        std::vector<std::vector<double>> all_number_densities_stable;
         randomEvent create_random_event();
         void calc_number_density_for_an_event();
         void calc_number_density_for_an_event(std::vector<double>& current_number_densities);
         void calc_number_density_for_an_event(std::vector<double>& current_number_densities, std::vector<double>& current_number_densities_stable);
         void print_parameters_to_outputfile(std::ofstream& output);
+        void print_output_results(std::ofstream& out);
+        void print_output_results_stable(std::ofstream& outstable);
         double calc_Kj(double delta_time);
         double const_for_Kj_1;
         double const_for_Kj_2;
