@@ -869,37 +869,11 @@ void Create_events_and_calc_number_density::allEvent_number_densities_new()
         //new string for output stable file
         std::string output_stable, output;
         output = calculated_parameters.param.out_file;
-        //const std::string ext1 = ".dat";
-        //const std::string ext2 = ".txt";
-
-        // If output file name ended with .dat or .txt extension
-        //if (output.size() >= ext1.size() && output.compare(output.size() - ext1.size(), ext1.size(), ext1) == 0) {
-            // .dat extension
-        //    output_stable = output.substr(0, output.size() - ext1.size()) + "_stable" + ext1;
-        //} else if (output.size() >= ext2.size() && output.compare(output.size() - ext2.size(), ext2.size(), ext2) == 0) {
-            // .txt extension
-        //    output_stable = output.substr(0, output.size() - ext2.size()) + "_stable" + ext2;
-        //} else {
-            // No known extension
-        //    output_stable = output + "_stable";
-        //}
-
-        //create and open stable ofstream, print comment lines
-        //std::ofstream res_stable;
-        //res_stable.open(output_stable);
         print_parameters_to_outputfile(res);
-        //print_parameters_to_outputfile(res_stable);
-        /*for(long unsigned int i = 0; i < sampling_time_points.size(); i++)
-        {
-            res << sampling_time_points[i] << "\t";
-            res_stable << sampling_time_points[i] << "\t";
-        }*/
-        //res << std::endl;
-        //res_stable << std::endl;
         std::cout << "Started to calculate median density" << std::endl;
         calculate_median_based_hotokezaka();
         std::cout << "Started to create and calculate random events" << std::endl;
-        
+        #pragma omp parallel for
         for(int i = 0; i < calculated_parameters.param.number_of_runs; i++)
         {
             for(int j = 0; j < calculated_parameters.get_number_of_events(); j++)
