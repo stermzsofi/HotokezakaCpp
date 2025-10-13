@@ -10,9 +10,14 @@
 #include <random>
 #include <regex>
 #include <boost/random/laplace_distribution.hpp>
+#include <boost/accumulators/accumulators.hpp>
+#include <boost/accumulators/statistics/p_square_quantile.hpp>
+//#include <boost/accumulators/statistics/quantile.hpp>
+//#include <boost/accumulators/tag.hpp>
 #include "Trapezoidal_rule/trapezoidal.hpp"
 #include "Linear_interpol/linear_interpol.hpp"
 #include "constant.hpp"
+using namespace boost::accumulators;
 
 //check if a string is a double number
 bool IsDouble(const std::string& s);
@@ -238,6 +243,16 @@ class Create_events_and_calc_number_density
         std::vector<double> sampling_time_points;
         std::vector<double> number_densites;
         std::vector<double> median_number_densities;
+        std::vector<double> p16;
+        std::vector<double> p84;
+        std::vector<double> mymedian;
+        std::vector<double> p2p5;
+        std::vector<double> p97p5;
+        std::vector<double> median_stable;
+        std::vector<double> p16_stable;
+        std::vector<double> p84_stable;
+        std::vector<double> p2p5_stable;
+        std::vector<double> p97p5_stable;
         std::vector<std::vector<double>> all_number_densities;
         std::vector<std::vector<double>> all_number_densities_stable;
         randomEvent create_random_event();
@@ -247,10 +262,14 @@ class Create_events_and_calc_number_density
         void print_parameters_to_outputfile(std::ofstream& output);
         void print_output_results(std::ofstream& out);
         void print_output_results_stable(std::ofstream& outstable);
+        void calculate_statistics();
+        void calculate_median_based_hotokezaka();
         double calc_Kj(double delta_time);
         double const_for_Kj_1;
         double const_for_Kj_2;
         
 };
+
+double precise_quantile_calc(std::vector<double> sorted_data, double p);
 
 #endif

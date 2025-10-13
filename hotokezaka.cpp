@@ -491,7 +491,13 @@ Create_events_and_calc_number_density::Create_events_and_calc_number_density(Cal
         median_number_densities.push_back(0.0);
     }
     all_number_densities.resize(calculated_parameters.param.number_of_runs, std::vector<double>(sampling_time_points.size(), 0.0));
+    mymedian.resize(sampling_time_points.size(), 0.0);
+    p2p5.resize(sampling_time_points.size(), 0.0);
+    p16.resize(sampling_time_points.size(), 0.0);
+    p84.resize(sampling_time_points.size(), 0.0);
+    p97p5.resize(sampling_time_points.size(), 0.0);
 }
+
 
 randomEvent Create_events_and_calc_number_density::create_random_event()
 {
@@ -604,6 +610,20 @@ void Create_events_and_calc_number_density::print_parameters_to_outputfile(std::
     out << "#read_in_rate_function\t" << calculated_parameters.param.read_in_rate_function << std::endl;
     out << "#element_initial_production_ratio\t" << calculated_parameters.param.element_initial_production_ratio << std::endl;
     out << "#Ni\t" << calculated_parameters.Ni << std::endl;
+    out << "#(calculated) number of events\t" << calculated_parameters.get_number_of_events() << std::endl;
+}
+
+void Create_events_and_calc_number_density::calculate_median_based_hotokezaka()
+{
+    for(long unsigned int i = 0; i < median_number_densities.size(); i++)
+    {
+        double rate_dens_i = calculated_parameters.param.rate_function->get_rate_density_at_t(sampling_time_points[i]);
+        double rate_i = calculated_parameters.rate_density_to_rate(rate_dens_i);
+        double taumix = 300.0 * std::pow(rate_i/10.0, -0.4) * std::pow(calculated_parameters.param.alpha/0.1,-0.6) * 
+            std::pow(calculated_parameters.param.vt/7.0, -0.6) * std::pow(calculated_parameters.param.h_scale/0.2,-0.6);
+        median_number_densities[i] = calculated_parameters.Ni * rate_dens_i * 
+                calculated_parameters.param.tau * std::exp(-taumix/(2.0*calculated_parameters.param.tau));
+    }
 }
 
 void Create_events_and_calc_number_density::allEvent_number_densities() 
@@ -740,149 +760,188 @@ void Create_events_and_calc_number_density::allEvent_number_densities()
 
 void Create_events_and_calc_number_density::print_output_results(std::ofstream& out)
 {
+    size_t examples_number = 5;
+    if(all_number_densities.size() < examples_number)
+    {
+        examples_number = all_number_densities.size();
+    }
+    out << "#time\tmedian_based_Hotokezaka\tcalculated_median\tp16\tp84\tp2.5\tp97.5\texamples";
+    if(calculated_parameters.param.stable_izotope)
+    {
+        out << "\tcalculated_median_stable\tp16_stable\tp84_stable\tp2.5_stable\tp97.5_stable\tstable_examples";
+    }
+    out << std::endl;
+    //std::cout << mymedian.size() << "\t" << sampling_time_points.size() << std::endl;
     for(long unsigned int i = 0; i < sampling_time_points.size(); i++)
     {
-        out << sampling_time_points[i] << "\t" << median_number_densities[i];
+        out << sampling_time_points[i] << "\t" << median_number_densities[i] << "\t" << mymedian[i] << "\t" << p16[i] << "\t" << p84[i] << "\t" << p2p5[i] << "\t" << p97p5[i];
         //out << median_number_densities[i];
-        for(long unsigned int j = 0; j < all_number_densities.size(); j++)
+        
+        for(long unsigned int j = 0; j < examples_number; j++)
         {
             out << "\t" << all_number_densities[j][i];
         }
+        if(calculated_parameters.param.stable_izotope)
+        {
+            out << "\t" << median_stable[i] << "\t" << p16_stable[i] << "\t" << p84_stable[i] << "\t" << p2p5_stable[i] << "\t" << p97p5_stable[i];
+            for(long unsigned int j = 0; j < examples_number; j++)
+            {
+                out << "\t" << all_number_densities_stable[j][i];
+            }
+        }
         out << std::endl;
     }
-    
+}
+
+void Create_events_and_calc_number_density::calculate_statistics()
+{
+    //std::vector<double> p16, median, p84, p2p5, p97p5;
+
+    for (size_t t = 0; t < sampling_time_points.size(); ++t) 
+    {
+        std::vector<double> values_at_t;
+        for (size_t run = 0; run < all_number_densities.size(); ++run) 
+        {
+            values_at_t.push_back(all_number_densities[run][t]);
+        }
+        std::sort(values_at_t.begin(), values_at_t.end());
+        mymedian[t] = precise_quantile_calc(values_at_t, 0.5);
+        p16[t] = precise_quantile_calc(values_at_t, 0.16);
+        p84[t] = precise_quantile_calc(values_at_t, 0.84);
+        p2p5[t] = precise_quantile_calc(values_at_t, 0.025);
+        p97p5[t] = precise_quantile_calc(values_at_t, 0.975);
+    }
+    if(calculated_parameters.param.stable_izotope)
+    {
+        for (size_t t = 0; t < sampling_time_points.size(); ++t) 
+        {
+            std::vector<double> values_at_t;
+            for (size_t run = 0; run < all_number_densities_stable.size(); ++run) 
+            {
+                values_at_t.push_back(all_number_densities_stable[run][t]);
+            }
+            std::sort(values_at_t.begin(), values_at_t.end());
+            median_stable[t] = precise_quantile_calc(values_at_t, 0.5);
+            p16_stable[t] = precise_quantile_calc(values_at_t, 0.16);
+            p84_stable[t] = precise_quantile_calc(values_at_t, 0.84);
+            p2p5_stable[t] = precise_quantile_calc(values_at_t, 0.025);
+            p97p5_stable[t] = precise_quantile_calc(values_at_t, 0.975);
+        }
+    }
 }
 
 void Create_events_and_calc_number_density::allEvent_number_densities_new()
 {
     std::ofstream res;
-    res.open("newtest.dat");
+    res.open(calculated_parameters.param.out_file);
     if(!calculated_parameters.param.stable_izotope)
     {
         print_parameters_to_outputfile(res);
-        /*for(long unsigned int i = 0; i < sampling_time_points.size(); i++)
-        {
-            res << sampling_time_points[i] << "\t";
-        }
-        res << std::endl;*/
         std::cout << "Started to calculate median density" << std::endl;
-        for(long unsigned int i = 0; i < median_number_densities.size(); i++)
-        {
-            double rate_dens_i = calculated_parameters.param.rate_function->get_rate_density_at_t(sampling_time_points[i]);
-            double rate_i = calculated_parameters.rate_density_to_rate(rate_dens_i);
-            double taumix = 300.0 * std::pow(rate_i/10.0, -0.4) * std::pow(calculated_parameters.param.alpha/0.1,-0.6) * 
-                std::pow(calculated_parameters.param.vt/7.0, -0.6) * std::pow(calculated_parameters.param.h_scale/0.2,-0.6);
-            median_number_densities[i] = calculated_parameters.Ni * rate_dens_i * 
-                    calculated_parameters.param.tau * std::exp(-taumix/(2.0*calculated_parameters.param.tau));
-        }
-        /*for(long unsigned int i = 0; i < median_number_densities.size(); i++)
-        {
-            res << median_number_densities[i] << "\t";
-        }
-        res << std::endl;*/
+        calculate_median_based_hotokezaka();
         std::cout << "Started to create and calculate random events" << std::endl;
         #pragma omp parallel for
         for(int i = 0; i < calculated_parameters.param.number_of_runs; i++)
         {
-            //std::vector<double> local_number_densites(sampling_time_points.size(), 0.0);
-            //set all number_densities to 0
-            //std::fill(number_densites.begin(), number_densites.end(), 0.0);
             for(int j = 0; j < calculated_parameters.get_number_of_events(); j++)
             {
                 calc_number_density_for_an_event(all_number_densities[i]);
             }
-            //write to output file
+            //check sizes
             if(all_number_densities[i].size() != sampling_time_points.size())
             {
                 throw std::runtime_error("Baj van a local_number_densities méretével");
             }
-            //#pragma omp critical
-            /*{for(long unsigned int j = 0; j < local_number_densites.size(); j++)
-            {
-                res << local_number_densites[j] << "\t";
-            }
-            res << std::endl;}*/
-            //print_output_results(res);
         }
+        //after all runs done: calculate statistics and print out results
+        calculate_statistics();
         print_output_results(res);
     }
     else
     {
+        //resize vectors
+        all_number_densities_stable.resize(calculated_parameters.param.number_of_runs, std::vector<double>(sampling_time_points.size(), 0.0));
+        median_stable.resize(sampling_time_points.size(), 0.0);
+        p2p5_stable.resize(sampling_time_points.size(), 0.0);
+        p16_stable.resize(sampling_time_points.size(), 0.0);
+        p84_stable.resize(sampling_time_points.size(), 0.0);
+        p97p5_stable.resize(sampling_time_points.size(), 0.0);
         //new string for output stable file
         std::string output_stable, output;
         output = calculated_parameters.param.out_file;
-        const std::string ext1 = ".dat";
-        const std::string ext2 = ".txt";
+        //const std::string ext1 = ".dat";
+        //const std::string ext2 = ".txt";
 
-        // Nézd meg, végződik-e .dat vagy .txt kiterjesztéssel
-        if (output.size() >= ext1.size() && output.compare(output.size() - ext1.size(), ext1.size(), ext1) == 0) {
-            // .dat végződés
-            output_stable = output.substr(0, output.size() - ext1.size()) + "_stable" + ext1;
-        } else if (output.size() >= ext2.size() && output.compare(output.size() - ext2.size(), ext2.size(), ext2) == 0) {
-            // .txt végződés
-            output_stable = output.substr(0, output.size() - ext2.size()) + "_stable" + ext2;
-        } else {
-            // Nincs ismert végződés
-            output_stable = output + "_stable";
-        }
+        // If output file name ended with .dat or .txt extension
+        //if (output.size() >= ext1.size() && output.compare(output.size() - ext1.size(), ext1.size(), ext1) == 0) {
+            // .dat extension
+        //    output_stable = output.substr(0, output.size() - ext1.size()) + "_stable" + ext1;
+        //} else if (output.size() >= ext2.size() && output.compare(output.size() - ext2.size(), ext2.size(), ext2) == 0) {
+            // .txt extension
+        //    output_stable = output.substr(0, output.size() - ext2.size()) + "_stable" + ext2;
+        //} else {
+            // No known extension
+        //    output_stable = output + "_stable";
+        //}
 
-        //stable ofstream létrehozása és megnyitása
-        std::ofstream res_stable;
-        res_stable.open(output_stable);
+        //create and open stable ofstream, print comment lines
+        //std::ofstream res_stable;
+        //res_stable.open(output_stable);
         print_parameters_to_outputfile(res);
-        print_parameters_to_outputfile(res_stable);
-        for(long unsigned int i = 0; i < sampling_time_points.size(); i++)
+        //print_parameters_to_outputfile(res_stable);
+        /*for(long unsigned int i = 0; i < sampling_time_points.size(); i++)
         {
             res << sampling_time_points[i] << "\t";
             res_stable << sampling_time_points[i] << "\t";
-        }
-        res << std::endl;
-        res_stable << std::endl;
+        }*/
+        //res << std::endl;
+        //res_stable << std::endl;
         std::cout << "Started to calculate median density" << std::endl;
-        for(long unsigned int i = 0; i < median_number_densities.size(); i++)
-        {
-            double rate_dens_i = calculated_parameters.param.rate_function->get_rate_density_at_t(sampling_time_points[i]);
-            double rate_i = calculated_parameters.rate_density_to_rate(rate_dens_i);
-            double taumix = 300.0 * std::pow(rate_i/10.0, -0.4) * std::pow(calculated_parameters.param.alpha/0.1,-0.6) * 
-                std::pow(calculated_parameters.param.vt/7.0, -0.6) * std::pow(calculated_parameters.param.h_scale/0.2,-0.6);
-            median_number_densities[i] = calculated_parameters.Ni * rate_dens_i * 
-                    calculated_parameters.param.tau * std::exp(-taumix/(2.0*calculated_parameters.param.tau));
-        }
-        for(long unsigned int i = 0; i < median_number_densities.size(); i++)
-        {
-            res << median_number_densities[i] << "\t";
-            //stable file: just write a 0 line for easyer plotting procedure
-            res_stable << "0" << "\t";  
-        }
-        res << std::endl;
-        res_stable << std::endl;
+        calculate_median_based_hotokezaka();
         std::cout << "Started to create and calculate random events" << std::endl;
-        #pragma omp parallel for
+        
         for(int i = 0; i < calculated_parameters.param.number_of_runs; i++)
         {
-            std::vector<double> local_number_densites(sampling_time_points.size(), 0.0);
-            std::vector<double> local_number_densities_stable(sampling_time_points.size(), 0.0);
-            //set all number_densities to 0
-            //std::fill(number_densites.begin(), number_densites.end(), 0.0);
             for(int j = 0; j < calculated_parameters.get_number_of_events(); j++)
             {
-                calc_number_density_for_an_event(local_number_densites, local_number_densities_stable);
+                calc_number_density_for_an_event(all_number_densities[i], all_number_densities_stable[i]);
             }
-            //write to output file
-            if(local_number_densites.size() != sampling_time_points.size() || local_number_densities_stable.size() != sampling_time_points.size())
+            //check sizes
+            if(all_number_densities[i].size() != sampling_time_points.size())
             {
                 throw std::runtime_error("Baj van a local_number_densities méretével");
             }
-            #pragma omp critical
-            {for(long unsigned int j = 0; j < local_number_densites.size(); j++)
-            {
-                res << local_number_densites[j] << "\t";
-                res_stable << local_number_densities_stable[j] << "\t";
-            }
-            res << std::endl;
-            res_stable << std::endl;}
         }
-        res_stable.close();
+        //after all runs done: calculate statistics and print out results
+        calculate_statistics();
+        print_output_results(res);
     }
     res.close();
+    
 } 
+
+double precise_quantile_calc(std::vector<double> sorted_data, double p)
+{
+    if(sorted_data.empty())
+    {
+        throw std::runtime_error("Empty data vector in precise_quantile_calc");
+    }
+    if(p < 0.0 || p > 1.0)
+    {
+        throw std::runtime_error("p value out of range in precise_quantile_calc");
+    }
+    size_t n = sorted_data.size();
+    double rank = p * (n - 1);
+    size_t lower_index = static_cast<size_t>(std::floor(rank));
+    size_t upper_index = static_cast<size_t>(std::ceil(rank));
+    
+    if(lower_index == upper_index)
+    {
+        return sorted_data[lower_index];
+    }
+    else
+    {
+        double weight = rank - lower_index;
+        return sorted_data[lower_index] * (1.0 - weight) + sorted_data[upper_index] * weight;
+    }
+}
