@@ -1,7 +1,7 @@
 #include "hotokezaka.hpp"
 
 #include <csignal>
-
+//This should be defined first.
 Create_events_and_calc_number_density* Create_events_and_calc_number_density::signal_handler = nullptr;
 
 void signalHandler(int signum) {
