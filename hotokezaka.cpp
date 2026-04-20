@@ -1,5 +1,14 @@
 #include "hotokezaka.hpp"
 
+#include <csignal>
+
+Create_events_and_calc_number_density* Create_events_and_calc_number_density::signal_handler = nullptr;
+
+void signalHandler(int signum) {
+    std::cout << "Interrupt signal (" << signum << ") received.\n";
+    exit(signum);
+}  
+
 bool IsDouble(const std::string& s)
 {
     std::regex reg("^[+-]?[[:digit:]]+\\.?[[:digit:]]*[eE][+-]?[[:digit:]]+$|^[+-]?[[:digit:]]+\\.?[[:digit:]]*$");
@@ -507,7 +516,7 @@ Create_events_and_calc_number_density::Create_events_and_calc_number_density(Cal
         std::cerr << rand_number_0_1(mt) << " ";
     }
     std::cerr << std::endl;
-
+    signal_handler = this;
 }
 
 
@@ -872,8 +881,55 @@ void Create_events_and_calc_number_density::calculate_statistics()
     }
 }
 
+void Create_events_and_calc_number_density::signalHandlerSave(int signum)
+{
+    std::cout << "Interrupt signal (" << signum << ") received." << std::endl;
+    std::cout << "Starting to save results before exiting..." << std::endl;
+    //Started to save results
+    //create and open temp output file
+    std::ofstream restemp;
+    std::string temp_filename = calculated_parameters.param.out_file + "_temp";
+    restemp.open(temp_filename, std::ios::binary | std::ios::out);
+    if(calculated_parameters.param.stable_izotope)
+    {
+        for(size_t i = 0; i < done_runs; i++)
+        {
+            for(size_t j = 0; j < sampling_time_points.size(); j++)
+            {
+                restemp.write((char*)(&all_number_densities[i][j]), sizeof(double));
+                //restemp.write((char*)(&all_number_densities_stable[i][j]), sizeof(double));
+            }
+            for (size_t j = 0; j < sampling_time_points.size(); j++)
+            {
+                restemp.write((char*)(&all_number_densities_stable[i][j]), sizeof(double));
+            }
+        }
+        
+    }
+    else
+    {
+        for (size_t i = 0; i < done_runs; i++)
+        {
+            for (size_t j = 0; j < sampling_time_points.size(); j++)
+            {
+                restemp.write((char*)(&all_number_densities[i][j]), sizeof(double));
+            }
+        }
+    }
+    restemp.close();
+    std::cout << "Results saved to " << temp_filename << ". Exiting now." << std::endl;
+    exit(signum);
+}
+
+/*static void Create_events_and_calc_number_density::static_signalHandlerSave(int signum)
+{
+    signalHandlerSave(signum);
+}*/
+
 void Create_events_and_calc_number_density::allEvent_number_densities_new()
 {
+    //signal(SIGINT, signalHandler);
+    signal(SIGINT, static_signalHandlerSave);
     std::ofstream res;
     res.open(calculated_parameters.param.out_file);
     if(!calculated_parameters.param.stable_izotope)
@@ -883,18 +939,20 @@ void Create_events_and_calc_number_density::allEvent_number_densities_new()
         calculate_median_based_hotokezaka();
         std::cout << "Started to create and calculate random events" << std::endl;
         #pragma omp parallel for
-        for(int i = 0; i < calculated_parameters.param.number_of_runs; i++)
-        {
-            for(int j = 0; j < calculated_parameters.get_number_of_events(); j++)
+            for(int i = 0; i < calculated_parameters.param.number_of_runs; i++)
             {
-                calc_number_density_for_an_event(all_number_densities[i]);
+                for(int j = 0; j < calculated_parameters.get_number_of_events(); j++)
+                {
+                    calc_number_density_for_an_event(all_number_densities[i]);
+                }
+                //check sizes
+                if(all_number_densities[i].size() != sampling_time_points.size())
+                {
+                    throw std::runtime_error("Baj van a local_number_densities méretével");
+                }
+                done_runs++;
+                std::cout << "\rProgress: " << (double)done_runs/(double)calculated_parameters.param.number_of_runs * 100.0 << "%, done runs: " << done_runs << "    "  << std::flush;
             }
-            //check sizes
-            if(all_number_densities[i].size() != sampling_time_points.size())
-            {
-                throw std::runtime_error("Baj van a local_number_densities méretével");
-            }
-        }
         //after all runs done: calculate statistics and print out results
         calculate_statistics();
         print_output_results(res);
@@ -911,24 +969,6 @@ void Create_events_and_calc_number_density::allEvent_number_densities_new()
         //new string for output stable file
         std::string output_stable, output;
         output = calculated_parameters.param.out_file;
-        //const std::string ext1 = ".dat";
-        //const std::string ext2 = ".txt";
-
-        // If output file name ended with .dat or .txt extension
-        //if (output.size() >= ext1.size() && output.compare(output.size() - ext1.size(), ext1.size(), ext1) == 0) {
-            // .dat extension
-        //    output_stable = output.substr(0, output.size() - ext1.size()) + "_stable" + ext1;
-        //} else if (output.size() >= ext2.size() && output.compare(output.size() - ext2.size(), ext2.size(), ext2) == 0) {
-            // .txt extension
-        //    output_stable = output.substr(0, output.size() - ext2.size()) + "_stable" + ext2;
-        //} else {
-            // No known extension
-        //    output_stable = output + "_stable";
-        //}
-
-        //create and open stable ofstream, print comment lines
-        //std::ofstream res_stable;
-        //res_stable.open(output_stable);
         print_parameters_to_outputfile(res);
         //print_parameters_to_outputfile(res_stable);
         /*for(long unsigned int i = 0; i < sampling_time_points.size(); i++)
@@ -954,6 +994,8 @@ void Create_events_and_calc_number_density::allEvent_number_densities_new()
             {
                 throw std::runtime_error("Baj van a local_number_densities méretével");
             }
+            done_runs++;
+            std::cout << "\rProgress: " << (double)done_runs/(double)calculated_parameters.param.number_of_runs * 100.0 << "%, done runs: " << done_runs << "    "  << std::flush;
         }
         auto time1 = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> elapsed = time1 - time0;

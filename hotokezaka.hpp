@@ -234,11 +234,9 @@ struct randomEvent
 
 class Create_events_and_calc_number_density
 {
-    public:
-        Create_events_and_calc_number_density(Calculated_Numbers_Based_on_read_in_parameters& calc_par);
-        void allEvent_number_densities();
-        void allEvent_number_densities_new();
     private:
+        static Create_events_and_calc_number_density* signal_handler;
+        size_t done_runs = 0;
         std::uniform_real_distribution<double> rand_number_0_1;
         boost::random::laplace_distribution<double> rand_laplace;
         std::vector<std::mt19937_64> mt_vec;
@@ -270,7 +268,13 @@ class Create_events_and_calc_number_density
         double calc_Kj(double delta_time);
         double const_for_Kj_1;
         double const_for_Kj_2;
+    public:
         
+        void allEvent_number_densities();
+        void allEvent_number_densities_new();
+        void signalHandlerSave(int signum);
+        static void static_signalHandlerSave(int signum){signal_handler->signalHandlerSave(signum);}
+        Create_events_and_calc_number_density(Calculated_Numbers_Based_on_read_in_parameters& calc_par);
 };
 
 double precise_quantile_calc(std::vector<double> sorted_data, double p);
