@@ -496,14 +496,28 @@ Create_events_and_calc_number_density::Create_events_and_calc_number_density(Cal
     p16.resize(sampling_time_points.size(), 0.0);
     p84.resize(sampling_time_points.size(), 0.0);
     p97p5.resize(sampling_time_points.size(), 0.0);
+    auto num_threads = omp_get_max_threads();
+    mt_vec.resize(num_threads);
+    auto seed_gen = std::random_device{};
+    std::generate(mt_vec.begin(), mt_vec.end(),[&seed_gen](){return std::mt19937_64{seed_gen()};});
+    std::cerr << "DEBUG: Number of threads: " << num_threads << std::endl;
+    std::cerr << "DEBUG: First random numbers: ";
+    for(auto &mt : mt_vec)
+    {
+        std::cerr << rand_number_0_1(mt) << " ";
+    }
+    std::cerr << std::endl;
+
 }
 
 
-randomEvent Create_events_and_calc_number_density::create_random_event()
+randomEvent Create_events_and_calc_number_density::create_random_event(std::mt19937_64& mt)
 {
     randomEvent event;
-    std::random_device rd;
-    std::mt19937 mt(rd());
+/*    static std::random_device rd;
+    #pragma omp threadprivate(rd)
+    static std::mt19937 mt(rd());
+    #pragma omp threadprivate(mt)*/
     double circumf = calculated_parameters.param.r_Sun * 2.0 * M_PI;
     event.time = calculated_parameters.interpolate_random_number_to_time(rand_number_0_1(mt));
     event.x = circumf * rand_number_0_1(mt) - 0.5 * circumf;
@@ -516,7 +530,8 @@ randomEvent Create_events_and_calc_number_density::create_random_event()
 double Create_events_and_calc_number_density::calc_Kj(double delta_time)
 {
     double left, right, Kj;
-    left = std::pow(const_for_Kj_1*delta_time, 1.5);
+    //left = std::pow(const_for_Kj_1*delta_time, 1.5);
+    left =std::sqrt(const_for_Kj_1*delta_time*const_for_Kj_1*delta_time*const_for_Kj_1*delta_time);
     right = const_for_Kj_2 * delta_time;
     Kj = std::min(left, right);
     return Kj;
@@ -525,7 +540,7 @@ double Create_events_and_calc_number_density::calc_Kj(double delta_time)
 void Create_events_and_calc_number_density::calc_number_density_for_an_event()
 {
     //first: need an event
-    randomEvent event = create_random_event();
+    randomEvent event = create_random_event(mt_vec[omp_get_thread_num()]);
     //some usable variable
     double const_at_exp = - event.distance*event.distance/(4.0 * calculated_parameters.D);
     double delta_tj, number_density;
@@ -548,7 +563,7 @@ void Create_events_and_calc_number_density::calc_number_density_for_an_event()
 void Create_events_and_calc_number_density::calc_number_density_for_an_event(std::vector<double>& current_number_densities)
 {
     //first: need an event
-    randomEvent event = create_random_event();
+    randomEvent event = create_random_event(mt_vec[omp_get_thread_num()]);
     //some usable variable
     double const_at_exp = - event.distance*event.distance/(4.0 * calculated_parameters.D);
     double delta_tj, number_density;
@@ -571,26 +586,53 @@ void Create_events_and_calc_number_density::calc_number_density_for_an_event(std
 void Create_events_and_calc_number_density::calc_number_density_for_an_event(std::vector<double>& current_number_densities, std::vector<double>& current_number_densities_stable)
 {
      //first: need an event
-    randomEvent event = create_random_event();
+    //auto time0 = std::chrono::high_resolution_clock::now();
+    randomEvent event = create_random_event(mt_vec[omp_get_thread_num()]);
+    //auto time1 = std::chrono::high_resolution_clock::now();
     //some usable variable
     double const_at_exp = - event.distance*event.distance/(4.0 * calculated_parameters.D);
     double delta_tj, number_density, number_density_stable;
     //second: from the first sampling_time_points see all, if it < event.time, need calculating, else break
-    for(long unsigned int i = 0; i < sampling_time_points.size(); i++)
+    //auto time2 = std::chrono::high_resolution_clock::now();
+    //for(long unsigned int i = 0; i < sampling_time_points.size(); i++)
+    //Reach dt:
+    
+    
+    size_t j = static_cast<size_t>((event.time ) / calculated_parameters.param.sampleDt);
+    
+
+
+    //std::cerr << "DEBUG: Event time: " << event.time << ", j: " << j << ", sampling_time_points[j]: " << sampling_time_points[j] << std::endl;
+    for(long unsigned int i = 0; i <= j; i++)
     {
-        if(sampling_time_points[i] <= event.time)
-        {
+        //if(sampling_time_points[i] <= event.time)
+        //{
+            //delta_tj = event.time - static_cast<double>(i) * calculated_parameters.param.sampleDt;
+            
             delta_tj = event.time - sampling_time_points[i];
-            number_density = calculated_parameters.Ni/calc_Kj(delta_tj) * std::exp(const_at_exp/delta_tj - delta_tj/calculated_parameters.param.tau);
-            number_density_stable = calculated_parameters.Ni/calc_Kj(delta_tj) * std::exp(const_at_exp/delta_tj);
+            auto Kj = calc_Kj(delta_tj);
+           // if (i==j) std::cerr << "DEBUG: i,j,delta_tj: " << i << ", " << j << ", " << delta_tj <<
+           // " Kj=" << Kj << std::endl;
+            //number_density = calculated_parameters.Ni/Kj * std::exp(const_at_exp/delta_tj - delta_tj/calculated_parameters.param.tau);
+            number_density_stable = calculated_parameters.Ni/Kj * std::exp(const_at_exp/delta_tj);
+            number_density = number_density_stable * std::exp(- delta_tj/calculated_parameters.param.tau);
+            
+            if(number_density_stable < 1e-15*current_number_densities_stable[i]) {
+              //  std::cerr << "DEBUG: Breaking at i: " << i << ", number_density_stable: " << number_density_stable << ", current_number_densities_stable[i]: " << current_number_densities_stable[i] << ", Kj: " << Kj 
+              //  << "exp: " << std::exp(const_at_exp/delta_tj) << " , " << const_at_exp << std::endl;
+                break;}
             current_number_densities[i] += number_density;
             current_number_densities_stable[i] += number_density_stable;
-        }
-        else
-        {
-            break;
-        }
+        //}
+        //else
+        //{
+        //    break;
+        //}
     }
+    //auto time3 = std::chrono::high_resolution_clock::now();
+    //std::chrono::duration<double> elapsed_event_creation = time1 - time0;
+    //std::chrono::duration<double> elapsed_number_density_calculation = time3 - time2;
+    //std::cerr << "DEBUG: Event creation time: " << elapsed_event_creation.count() *1e6 << " useconds, Number density calculation time: " << elapsed_number_density_calculation.count() * 1e6 << " useconds" << std::endl;
 }
 
 void Create_events_and_calc_number_density::print_parameters_to_outputfile(std::ofstream& out)
@@ -899,7 +941,8 @@ void Create_events_and_calc_number_density::allEvent_number_densities_new()
         std::cout << "Started to calculate median density" << std::endl;
         calculate_median_based_hotokezaka();
         std::cout << "Started to create and calculate random events" << std::endl;
-        
+        auto time0 = std::chrono::high_resolution_clock::now();
+        #pragma omp parallel for
         for(int i = 0; i < calculated_parameters.param.number_of_runs; i++)
         {
             for(int j = 0; j < calculated_parameters.get_number_of_events(); j++)
@@ -912,6 +955,9 @@ void Create_events_and_calc_number_density::allEvent_number_densities_new()
                 throw std::runtime_error("Baj van a local_number_densities méretével");
             }
         }
+        auto time1 = std::chrono::high_resolution_clock::now();
+        std::chrono::duration<double> elapsed = time1 - time0;
+        std::cout << "Elapsed time for event generation and number density calculation: " << elapsed.count() << " seconds" << std::endl;
         //after all runs done: calculate statistics and print out results
         calculate_statistics();
         print_output_results(res);

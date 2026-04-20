@@ -5,6 +5,7 @@
 #include <fstream>
 #include <string>
 #include <memory>
+#include <chrono>
 #include <filesystem>
 #include <algorithm>
 #include <random>
@@ -17,6 +18,7 @@
 #include "Trapezoidal_rule/trapezoidal.hpp"
 #include "Linear_interpol/linear_interpol.hpp"
 #include "constant.hpp"
+#include <omp.h>
 using namespace boost::accumulators;
 
 //check if a string is a double number
@@ -239,6 +241,7 @@ class Create_events_and_calc_number_density
     private:
         std::uniform_real_distribution<double> rand_number_0_1;
         boost::random::laplace_distribution<double> rand_laplace;
+        std::vector<std::mt19937_64> mt_vec;
         Calculated_Numbers_Based_on_read_in_parameters& calculated_parameters;
         std::vector<double> sampling_time_points;
         std::vector<double> number_densites;
@@ -255,7 +258,7 @@ class Create_events_and_calc_number_density
         std::vector<double> p97p5_stable;
         std::vector<std::vector<double>> all_number_densities;
         std::vector<std::vector<double>> all_number_densities_stable;
-        randomEvent create_random_event();
+        randomEvent create_random_event(std::mt19937_64& mt);
         void calc_number_density_for_an_event();
         void calc_number_density_for_an_event(std::vector<double>& current_number_densities);
         void calc_number_density_for_an_event(std::vector<double>& current_number_densities, std::vector<double>& current_number_densities_stable);
