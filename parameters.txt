@@ -13,4 +13,4 @@ rate_function	Constant
 Ni_calc_method	1e35	
 element_initial_prod_ratio	0.4
 stable_izotope	true
-output	bashfiletest1_1.txt
+output	restart_test_3.txt

@@ -505,17 +505,26 @@ Create_events_and_calc_number_density::Create_events_and_calc_number_density(Cal
     p16.resize(sampling_time_points.size(), 0.0);
     p84.resize(sampling_time_points.size(), 0.0);
     p97p5.resize(sampling_time_points.size(), 0.0);
+    if(calculated_parameters.param.stable_izotope)
+    {
+        all_number_densities_stable.resize(calculated_parameters.param.number_of_runs, std::vector<double>(sampling_time_points.size(), 0.0));
+        median_stable.resize(sampling_time_points.size(), 0.0);
+        p2p5_stable.resize(sampling_time_points.size(), 0.0);
+        p16_stable.resize(sampling_time_points.size(), 0.0);
+        p84_stable.resize(sampling_time_points.size(), 0.0);
+        p97p5_stable.resize(sampling_time_points.size(), 0.0);
+    }
     auto num_threads = omp_get_max_threads();
     mt_vec.resize(num_threads);
     auto seed_gen = std::random_device{};
     std::generate(mt_vec.begin(), mt_vec.end(),[&seed_gen](){return std::mt19937_64{seed_gen()};});
-    std::cerr << "DEBUG: Number of threads: " << num_threads << std::endl;
-    std::cerr << "DEBUG: First random numbers: ";
-    for(auto &mt : mt_vec)
+    //std::cerr << "DEBUG: Number of threads: " << num_threads << std::endl;
+    //std::cerr << "DEBUG: First random numbers: ";
+    /*for(auto &mt : mt_vec)
     {
         std::cerr << rand_number_0_1(mt) << " ";
     }
-    std::cerr << std::endl;
+    std::cerr << std::endl;*/
     signal_handler = this;
 }
 
@@ -881,9 +890,9 @@ void Create_events_and_calc_number_density::calculate_statistics()
     }
 }
 
-void Create_events_and_calc_number_density::signalHandlerSave(int signum)
+void Create_events_and_calc_number_density::save_progress(/*int signum*/)
 {
-    std::cout << "Interrupt signal (" << signum << ") received." << std::endl;
+    //std::cout << "Interrupt signal (" << signum << ") received." << std::endl;
     std::cout << "Starting to save results before exiting..." << std::endl;
     //Started to save results
     //create and open temp output file
@@ -892,12 +901,12 @@ void Create_events_and_calc_number_density::signalHandlerSave(int signum)
     restemp.open(temp_filename, std::ios::binary | std::ios::out);
     if(calculated_parameters.param.stable_izotope)
     {
-        for(size_t i = 0; i < done_runs; i++)
+        for(size_t i = 0; i < index_of_done_runs.size(); i++)
         {
             for(size_t j = 0; j < sampling_time_points.size(); j++)
             {
-                restemp.write((char*)(&all_number_densities[i][j]), sizeof(double));
-                //restemp.write((char*)(&all_number_densities_stable[i][j]), sizeof(double));
+                restemp.write((char*)(&all_number_densities[index_of_done_runs[i]][j]), sizeof(double));
+                //restemp.write((char*)(&all_number_densities_stable[index_of_done_runs[i]][j]), sizeof(double));
             }
             for (size_t j = 0; j < sampling_time_points.size(); j++)
             {
@@ -908,28 +917,116 @@ void Create_events_and_calc_number_density::signalHandlerSave(int signum)
     }
     else
     {
-        for (size_t i = 0; i < done_runs; i++)
+        for (size_t i = 0; i < index_of_done_runs.size(); i++)
         {
             for (size_t j = 0; j < sampling_time_points.size(); j++)
             {
-                restemp.write((char*)(&all_number_densities[i][j]), sizeof(double));
+                restemp.write((char*)(&all_number_densities[index_of_done_runs[i]][j]), sizeof(double));
             }
         }
     }
     restemp.close();
     std::cout << "Results saved to " << temp_filename << ". Exiting now." << std::endl;
-    exit(signum);
+    exit(0);
+    //for debug: copy the allnumberdensities and allnumberdensitiesstable to new vectors and read back the output
+    //std::vector<std::vector<double>> alldensitiesdebug;
+    //std::vector<std::vector<double>> alldensitiesstableddebug;
+    //alldensitiesdebug.resize(done_runs, std::vector<double>(sampling_time_points.size(), 0.0));
+    //alldensitiesstableddebug.resize(done_runs, std::vector<double>(sampling_time_points.size(), 0.0));
+    //for(size_t i = 0; i < done_runs; i++)
+    //{
+    //    alldensitiesdebug[i] = all_number_densities[i];
+    //    alldensitiesstableddebug[i] = all_number_densities_stable[i];
+    //}
+    //read_in_temporal_file();
+    //exit(0);
+    }
+
+void Create_events_and_calc_number_density::signalHandlerSave(int signum)
+{
+    //std::cout << "Interrupt signal (" << signum << ") received." << std::endl;
+    //std::cout << "Starting to save results before exiting..." << std::endl;
+    ////Started to save results
+    ////create and open temp output file
+    //std::ofstream restemp;
+    //std::string temp_filename = calculated_parameters.param.out_file + "_temp";
+    //restemp.open(temp_filename, std::ios::binary | std::ios::out);
+    //if(calculated_parameters.param.stable_izotope)
+    //{
+    //    for(size_t i = 0; i < done_runs; i++)
+    //    {
+    //        for(size_t j = 0; j < sampling_time_points.size(); j++)
+    //        {
+    //            restemp.write((char*)(&all_number_densities[i][j]), sizeof(double));
+    //            //restemp.write((char*)(&all_number_densities_stable[i][j]), sizeof(double));
+    //        }
+    //        for (size_t j = 0; j < sampling_time_points.size(); j++)
+    //        {
+    //            restemp.write((char*)(&all_number_densities_stable[i][j]), sizeof(double));
+    //        }
+    //    }
+    //    
+    //}
+    //else
+    //{
+    //    for (size_t i = 0; i < done_runs; i++)
+    //    {
+    //        for (size_t j = 0; j < sampling_time_points.size(); j++)
+    //        {
+    //            restemp.write((char*)(&all_number_densities[i][j]), sizeof(double));
+    //        }
+    //    }
+    //}
+    //restemp.close();
+    //std::cout << "Results saved to " << temp_filename << ". Exiting now." << std::endl;
+    //exit(signum);
+    process_interrupted = true;
+    signal_handler->process_interrupted = true;
 }
 
-/*static void Create_events_and_calc_number_density::static_signalHandlerSave(int signum)
+void Create_events_and_calc_number_density::read_in_temporal_file()
 {
-    signalHandlerSave(signum);
-}*/
+    std::string temp_filename = calculated_parameters.param.out_file + "_temp";
+    std::ifstream temp_in;
+    temp_in.open(temp_filename, std::ios::binary | std::ios::in);
+    temp_in.seekg(0);
+    done_runs = 0;
+    if(temp_in.is_open())
+    {
+        std::cout << "Found temp file: " << temp_filename << ". Reading in data..." << std::endl;
+        while(!temp_in.eof())
+        {
+            index_of_done_runs.push_back(done_runs);
+            for(size_t j = 0; j < sampling_time_points.size(); j++)
+            {
+                temp_in.read((char*)(&all_number_densities[done_runs][j]), sizeof(double));
+            }
+            for (size_t j = 0; j < sampling_time_points.size(); j++)
+            {
+                temp_in.read((char*)(&all_number_densities_stable[done_runs][j]), sizeof(double));
+            }
+            done_runs++;
+            //std::cout << "Done " << done_runs << std::endl;
+        }
+        done_runs--; //because the last loop will increase done_runs one more time after reading the last line
+        temp_in.close();
+        //delete temp file
+        std::filesystem::remove(temp_filename);
+        std::cout << "Reading done. Deleted temp file." << std::endl;
+        //std::cout << "Finished reading temp file. Starting from run number: " << done
+    }
+     else
+    {
+        std::cout << "No temp file found. Starting fresh." << std::endl;
+    }
+    std::cout << "Done runs after reading temp file: " << done_runs << std::endl;
+}
 
 void Create_events_and_calc_number_density::allEvent_number_densities_new()
 {
-    //signal(SIGINT, signalHandler);
+    //signal(SIGINT, signalHandlerSave);
     signal(SIGINT, static_signalHandlerSave);
+    read_in_temporal_file();
     std::ofstream res;
     res.open(calculated_parameters.param.out_file);
     if(!calculated_parameters.param.stable_izotope)
@@ -939,9 +1036,10 @@ void Create_events_and_calc_number_density::allEvent_number_densities_new()
         calculate_median_based_hotokezaka();
         std::cout << "Started to create and calculate random events" << std::endl;
         #pragma omp parallel for
-            for(int i = 0; i < calculated_parameters.param.number_of_runs; i++)
+            for(int i = done_runs;i < calculated_parameters.param.number_of_runs; i++)
             {
-                for(int j = 0; j < calculated_parameters.get_number_of_events(); j++)
+                
+                for(int j = 0; j < calculated_parameters.get_number_of_events() && !process_interrupted; j++)
                 {
                     calc_number_density_for_an_event(all_number_densities[i]);
                 }
@@ -950,8 +1048,16 @@ void Create_events_and_calc_number_density::allEvent_number_densities_new()
                 {
                     throw std::runtime_error("Baj van a local_number_densities méretével");
                 }
-                done_runs++;
+                if(!process_interrupted)
+                {
+                    done_runs++;
+                }
                 std::cout << "\rProgress: " << (double)done_runs/(double)calculated_parameters.param.number_of_runs * 100.0 << "%, done runs: " << done_runs << "    "  << std::flush;
+            }
+            if(process_interrupted)
+            {
+                std::cout << "\nProcess was interrupted. Saving progress..." << std::endl;
+                save_progress();
             }
         //after all runs done: calculate statistics and print out results
         calculate_statistics();
@@ -959,33 +1065,23 @@ void Create_events_and_calc_number_density::allEvent_number_densities_new()
     }
     else
     {
-        //resize vectors
-        all_number_densities_stable.resize(calculated_parameters.param.number_of_runs, std::vector<double>(sampling_time_points.size(), 0.0));
-        median_stable.resize(sampling_time_points.size(), 0.0);
-        p2p5_stable.resize(sampling_time_points.size(), 0.0);
-        p16_stable.resize(sampling_time_points.size(), 0.0);
-        p84_stable.resize(sampling_time_points.size(), 0.0);
-        p97p5_stable.resize(sampling_time_points.size(), 0.0);
         //new string for output stable file
         std::string output_stable, output;
         output = calculated_parameters.param.out_file;
         print_parameters_to_outputfile(res);
-        //print_parameters_to_outputfile(res_stable);
-        /*for(long unsigned int i = 0; i < sampling_time_points.size(); i++)
-        {
-            res << sampling_time_points[i] << "\t";
-            res_stable << sampling_time_points[i] << "\t";
-        }*/
-        //res << std::endl;
-        //res_stable << std::endl;
         std::cout << "Started to calculate median density" << std::endl;
         calculate_median_based_hotokezaka();
         std::cout << "Started to create and calculate random events" << std::endl;
         auto time0 = std::chrono::high_resolution_clock::now();
         #pragma omp parallel for
-        for(int i = 0; i < calculated_parameters.param.number_of_runs; i++)
+        for(int i = done_runs; i < calculated_parameters.param.number_of_runs; i++)
         {
-            for(int j = 0; j < calculated_parameters.get_number_of_events(); j++)
+            //for debug
+                //if(done_runs > 5)
+                //{
+                //    process_interrupted = true;
+                //}
+            for(int j = 0; j < calculated_parameters.get_number_of_events() && !process_interrupted; j++)
             {
                 calc_number_density_for_an_event(all_number_densities[i], all_number_densities_stable[i]);
             }
@@ -994,8 +1090,20 @@ void Create_events_and_calc_number_density::allEvent_number_densities_new()
             {
                 throw std::runtime_error("Baj van a local_number_densities méretével");
             }
-            done_runs++;
-            std::cout << "\rProgress: " << (double)done_runs/(double)calculated_parameters.param.number_of_runs * 100.0 << "%, done runs: " << done_runs << "    "  << std::flush;
+
+            #pragma omp critical
+            {if(!process_interrupted)
+            {
+                done_runs++;
+                index_of_done_runs.push_back(i);
+                //std::cout << "i done: " << i << std::endl;
+                std::cout << "\rProgress: " << (double)done_runs/(double)calculated_parameters.param.number_of_runs * 100.0 << "%, done runs: " << done_runs << "    "  << std::flush;
+            }}
+        }
+        if(process_interrupted)
+        {
+            std::cout << "\nProcess was interrupted. Saving progress..." << std::endl;
+            save_progress();
         }
         auto time1 = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> elapsed = time1 - time0;

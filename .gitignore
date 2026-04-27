@@ -19,3 +19,4 @@ without_paralell
 time_redshift_test
 Trapezoidal_rule/.deps
 python/*.txt
+*.txt

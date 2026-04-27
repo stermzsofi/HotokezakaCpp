@@ -19,6 +19,8 @@
 #include "Linear_interpol/linear_interpol.hpp"
 #include "constant.hpp"
 #include <omp.h>
+#include <atomic>
+#include <cstdio>
 using namespace boost::accumulators;
 
 //check if a string is a double number
@@ -236,7 +238,11 @@ class Create_events_and_calc_number_density
 {
     private:
         static Create_events_and_calc_number_density* signal_handler;
-        size_t done_runs = 0;
+        std::atomic<size_t> done_runs = 0;
+        std::vector<size_t> index_of_done_runs = {};
+        std::atomic<bool> process_interrupted = false;
+        void save_progress(/*int signum*/);
+        void read_in_temporal_file();
         std::uniform_real_distribution<double> rand_number_0_1;
         boost::random::laplace_distribution<double> rand_laplace;
         std::vector<std::mt19937_64> mt_vec;
@@ -269,7 +275,6 @@ class Create_events_and_calc_number_density
         double const_for_Kj_1;
         double const_for_Kj_2;
     public:
-        
         void allEvent_number_densities();
         void allEvent_number_densities_new();
         void signalHandlerSave(int signum);
