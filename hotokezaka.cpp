@@ -213,7 +213,7 @@ Calculated_Numbers_Based_on_read_in_parameters::Calculated_Numbers_Based_on_read
     //These also include a sigma_d,0 multiplier, but it will falls out
     M_star = 2.0 * M_PI * param.rd * param.rd;
     //rho_star: it was integrated from z=-inf to z=inf, it pronounces the 2*zd
-    rho_star = std::exp(-param.r_Sun/param.rd);/* / (2.0 * param.zd);*/
+    rho_star = std::exp(-param.r_Sun/param.rd) /(2.0*param.h_scale);/* / (2.0 * param.zd);*/
     init();
 }
 double Calculated_Numbers_Based_on_read_in_parameters::rate_density_to_rate(double R_density)
@@ -242,13 +242,22 @@ void Calculated_Numbers_Based_on_read_in_parameters::calculate_number_of_events(
     number_of_events_d = integral.qtrap();
     //integral resulted number of events/kpc^3
     //now: need multiple it with the volume of the investigated part
-    number_of_events_d *= 2.0 * M_PI * param.r_Sun * param.width;
+    number_of_events_d *= 2.0 * M_PI * param.r_Sun * param.width * 2.0 * param.h_scale;
     
     //calculate the number_of_events (int)
     number_of_events = int(number_of_events_d);
     std::cout << "The number of events: " << number_of_events_d << std::endl;
 }
 
+void Calculated_Numbers_Based_on_read_in_parameters::calc_taumix(double rate)
+{
+    taumix = c_const_in_taumix * std::pow(rate, -0.4) * std::pow(D,-3./5.);
+}
+
+void Calculated_Numbers_Based_on_read_in_parameters::calc_neq(double rate_dens)
+{
+    neq = Ni * rate_dens * param.tau;
+}
 
 void Calculated_Numbers_Based_on_read_in_parameters::init()
 {
@@ -273,12 +282,20 @@ void Calculated_Numbers_Based_on_read_in_parameters::init()
     }
 
     //calculate taumix for r0 and Ni
-    taumix = 300.0 * std::pow(param.r0_rate/10.0, -0.4) * std::pow(param.alpha/0.1,-0.6) * 
-             std::pow(param.vt/7.0, -0.6) * std::pow(param.h_scale/0.2,-0.6);
+    //taumix = 300.0 * std::pow(param.r0_rate/10.0, -0.4) * std::pow(param.alpha/0.1,-0.6) * 
+    //         std::pow(param.vt/7.0, -0.6) * std::pow(param.h_scale/0.2,-0.6);
+
     Ni = Ni_calc->calculate_Ni();
     
     //1e-3: convert 1/Gyr to 1/Myr
-    D = param.alpha * (param.vt / 7.0) * (param.h_scale / 0.2) * 1e-3;      //kpc^2/Myr
+    //D = param.alpha * (param.vt / 7.0) * (param.h_scale / 0.2) * 1e-3;      //kpc^2/Myr
+    D = param.alpha * (param.vt / 7.0) * (param.h_scale / 0.2) *0.0014;        //kpc^2/Myr
+
+    c_const_in_taumix = std::pow(std::exp(-param.r_Sun/param.rd)/(3.0*param.h_scale*param.rd*param.rd),-2./5.)*std::pow(2,-6./5.);
+    std::cout << "C const in taumix = " << c_const_in_taumix << std::endl;
+    //taumix = c_const_in_taumix * std::pow(param.r0_rate/10.0, -0.4) * std::pow(D,-3./5.);
+    calc_taumix(param.r0_rate);
+    calc_neq(param.rate_function->get_rate_density_at_t(0));
     Time_of_the_Universe = param.time_z.time_of_universe();
     //second: calculate the number of events
     calculate_number_of_events();
@@ -298,7 +315,7 @@ void Calculated_Numbers_Based_on_read_in_parameters::init()
         {
             integral.set_xstart(t_last);
             integral.set_xend(t);
-            sum += integral.qtrap()/number_of_events_d * 2.0 * M_PI * param.r_Sun * param.width;
+            sum += integral.qtrap()/number_of_events_d * 2.0 * M_PI * param.r_Sun * param.width * 2.0 * param.h_scale;
             cumulative_dist_values.push_back(sum);
             time_values_for_cumulative_dist.push_back(t);
             t_last = t;
@@ -670,7 +687,11 @@ void Create_events_and_calc_number_density::print_parameters_to_outputfile(std::
     out << "#read_in_rate_function\t" << calculated_parameters.param.read_in_rate_function << std::endl;
     out << "#element_initial_production_ratio\t" << calculated_parameters.param.element_initial_production_ratio << std::endl;
     out << "#Ni\t" << calculated_parameters.Ni << std::endl;
+    out << "#-----------------------" << std::endl;
+    out << "Some important calculated parameters" << std::endl;
     out << "#(calculated) number of events\t" << calculated_parameters.get_number_of_events() << std::endl;
+    out << "#(calculated) taumix with r0\t" << calculated_parameters.taumix << std::endl;
+    out << "#(calculated) neq with r0_rate_dens\t" << calculated_parameters.neq << std::endl;
 }
 
 void Create_events_and_calc_number_density::calculate_median_based_hotokezaka()
@@ -679,10 +700,13 @@ void Create_events_and_calc_number_density::calculate_median_based_hotokezaka()
     {
         double rate_dens_i = calculated_parameters.param.rate_function->get_rate_density_at_t(sampling_time_points[i]);
         double rate_i = calculated_parameters.rate_density_to_rate(rate_dens_i);
-        double taumix = 300.0 * std::pow(rate_i/10.0, -0.4) * std::pow(calculated_parameters.param.alpha/0.1,-0.6) * 
-            std::pow(calculated_parameters.param.vt/7.0, -0.6) * std::pow(calculated_parameters.param.h_scale/0.2,-0.6);
-        median_number_densities[i] = calculated_parameters.Ni * rate_dens_i * 
-                calculated_parameters.param.tau * std::exp(-taumix/(2.0*calculated_parameters.param.tau));
+        //double taumix = 300.0 * std::pow(rate_i/10.0, -0.4) * std::pow(calculated_parameters.param.alpha/0.1,-0.6) * 
+        //    std::pow(calculated_parameters.param.vt/7.0, -0.6) * std::pow(calculated_parameters.param.h_scale/0.2,-0.6);
+        calculated_parameters.calc_taumix(rate_i);
+        calculated_parameters.calc_neq(rate_dens_i);
+        //median_number_densities[i] = calculated_parameters.Ni * rate_dens_i * 
+        //        calculated_parameters.param.tau * std::exp(-calculated_parameters.taumix/(2.0*calculated_parameters.param.tau));
+        median_number_densities[i] = calculated_parameters.neq * std::exp(-calculated_parameters.taumix/(2.0*calculated_parameters.param.tau));
     }
 }
 
@@ -825,7 +849,7 @@ void Create_events_and_calc_number_density::print_output_results(std::ofstream& 
     {
         examples_number = all_number_densities.size();
     }
-    out << "#time\tmedian_based_Hotokezaka\tcalculated_median\tp16\tp84\tp2.5\tp97.5\texamples";
+    out << "#time\tmedian_based_Hotokezaka\tcalculated_median\tratedens\tp16\tp84\tp2.5\tp97.5\texamples";
     if(calculated_parameters.param.stable_izotope)
     {
         out << "\tcalculated_median_stable\tp16_stable\tp84_stable\tp2.5_stable\tp97.5_stable\tstable_examples";
@@ -834,7 +858,7 @@ void Create_events_and_calc_number_density::print_output_results(std::ofstream& 
     //std::cout << mymedian.size() << "\t" << sampling_time_points.size() << std::endl;
     for(long unsigned int i = 0; i < sampling_time_points.size(); i++)
     {
-        out << sampling_time_points[i] << "\t" << median_number_densities[i] << "\t" << mymedian[i] << "\t" << p16[i] << "\t" << p84[i] << "\t" << p2p5[i] << "\t" << p97p5[i];
+        out << sampling_time_points[i] << "\t" << median_number_densities[i] << "\t" << mymedian[i] << "\t" << calculated_parameters.param.rate_function->get_rate_density_at_t(sampling_time_points[i]) << "\t" << p16[i] << "\t" << p84[i] << "\t" << p2p5[i] << "\t" << p97p5[i];
         //out << median_number_densities[i];
         
         for(long unsigned int j = 0; j < examples_number; j++)

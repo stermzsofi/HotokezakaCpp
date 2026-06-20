@@ -189,12 +189,15 @@ class Calculated_Numbers_Based_on_read_in_parameters
         void calculate_number_of_events();
         double interpolate_random_number_to_time(double myrand);
         int get_number_of_events() {return number_of_events;}
+        void calc_taumix(double rate);
+        void calc_neq(double rate_dens);
         void init();
         Read_In_Parameters& param;
         double D;       //D=alpha*(vt/7)*(H/0.2)
         //in Myr
         double taumix;  //taumix = 300 (R0/10)^-2/5 * (alpha/0.1)^-3/5*(vt/7)^-3/5*(H/0.2)^-3/5
         double Ni;
+        double neq;
     private:
         Quad_Trapezoidal integral;
         std::unique_ptr<Ni_calculation> Ni_calc;
@@ -204,6 +207,8 @@ class Calculated_Numbers_Based_on_read_in_parameters
         double Time_of_the_Universe;
         double number_of_events_d;      //the number of events in double
         int number_of_events;           //the number of events in int
+        double c_const_in_taumix;       //The C const in taumix equation
+        
 };
 
 //need for create the table scale factor (a) and time
