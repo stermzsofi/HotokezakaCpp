@@ -267,10 +267,11 @@ class Create_events_and_calc_number_density
         std::vector<double> p97p5_stable;
         std::vector<std::vector<double>> all_number_densities;
         std::vector<std::vector<double>> all_number_densities_stable;
+        std::vector<std::vector<double>> number_density_max_for_time;   //for each realization and each time point store the maximum number density which happened from any event
         randomEvent create_random_event(std::mt19937_64& mt);
         void calc_number_density_for_an_event();
         void calc_number_density_for_an_event(std::vector<double>& current_number_densities);
-        void calc_number_density_for_an_event(std::vector<double>& current_number_densities, std::vector<double>& current_number_densities_stable);
+        void calc_number_density_for_an_event(std::vector<double>& current_number_densities, std::vector<double>& current_number_densities_stable, std::vector<double>& current_max_density);
         void print_parameters_to_outputfile(std::ofstream& output);
         void print_output_results(std::ofstream& out);
         void print_output_results_stable(std::ofstream& outstable);

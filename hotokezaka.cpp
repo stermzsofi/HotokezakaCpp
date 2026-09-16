@@ -517,6 +517,7 @@ Create_events_and_calc_number_density::Create_events_and_calc_number_density(Cal
         median_number_densities.push_back(0.0);
     }
     all_number_densities.resize(calculated_parameters.param.number_of_runs, std::vector<double>(sampling_time_points.size(), 0.0));
+    number_density_max_for_time.resize(calculated_parameters.param.number_of_runs, std::vector<double>(sampling_time_points.size(), 0.0));
     mymedian.resize(sampling_time_points.size(), 0.0);
     p2p5.resize(sampling_time_points.size(), 0.0);
     p16.resize(sampling_time_points.size(), 0.0);
@@ -618,7 +619,7 @@ void Create_events_and_calc_number_density::calc_number_density_for_an_event(std
     }
 }
 
-void Create_events_and_calc_number_density::calc_number_density_for_an_event(std::vector<double>& current_number_densities, std::vector<double>& current_number_densities_stable)
+void Create_events_and_calc_number_density::calc_number_density_for_an_event(std::vector<double>& current_number_densities, std::vector<double>& current_number_densities_stable, std::vector<double>& current_max_density)
 {
      //first: need an event
     //auto time0 = std::chrono::high_resolution_clock::now();
@@ -658,6 +659,7 @@ void Create_events_and_calc_number_density::calc_number_density_for_an_event(std
                 break;}
             current_number_densities[i] += number_density;
             current_number_densities_stable[i] += number_density_stable;
+            current_max_density[i] = std::max(current_max_density[i], number_density);
         //}
         //else
         //{
@@ -817,11 +819,12 @@ void Create_events_and_calc_number_density::allEvent_number_densities()
         {
             std::vector<double> local_number_densites(sampling_time_points.size(), 0.0);
             std::vector<double> local_number_densities_stable(sampling_time_points.size(), 0.0);
+            std::vector<double> local_max_density(sampling_time_points.size(), 0.0);
             //set all number_densities to 0
             //std::fill(number_densites.begin(), number_densites.end(), 0.0);
             for(int j = 0; j < calculated_parameters.get_number_of_events(); j++)
             {
-                calc_number_density_for_an_event(local_number_densites, local_number_densities_stable);
+                calc_number_density_for_an_event(local_number_densites, local_number_densities_stable, local_max_density);
             }
             //write to output file
             if(local_number_densites.size() != sampling_time_points.size() || local_number_densities_stable.size() != sampling_time_points.size())
@@ -1107,7 +1110,7 @@ void Create_events_and_calc_number_density::allEvent_number_densities_new()
                 //}
             for(int j = 0; j < calculated_parameters.get_number_of_events() && !process_interrupted; j++)
             {
-                calc_number_density_for_an_event(all_number_densities[i], all_number_densities_stable[i]);
+                calc_number_density_for_an_event(all_number_densities[i], all_number_densities_stable[i], number_density_max_for_time[i]);
             }
             //check sizes
             if(all_number_densities[i].size() != sampling_time_points.size())
