@@ -265,6 +265,9 @@ class Create_events_and_calc_number_density
         std::vector<double> p84_stable;
         std::vector<double> p2p5_stable;
         std::vector<double> p97p5_stable;
+        std::vector<unsigned int> n_valid;
+        std::vector<unsigned int> n_single_10;
+        std::vector<unsigned int> n_single_1;
         std::vector<std::vector<double>> all_number_densities;
         std::vector<std::vector<double>> all_number_densities_stable;
         std::vector<std::vector<double>> number_density_max_for_time;   //for each realization and each time point store the maximum number density which happened from any event
@@ -276,6 +279,7 @@ class Create_events_and_calc_number_density
         void print_output_results(std::ofstream& out);
         void print_output_results_stable(std::ofstream& outstable);
         void calculate_statistics();
+        void calc_single_event_prob();
         void calculate_median_based_hotokezaka();
         double calc_Kj(double delta_time);
         double const_for_Kj_1;

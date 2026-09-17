@@ -523,6 +523,9 @@ Create_events_and_calc_number_density::Create_events_and_calc_number_density(Cal
     p16.resize(sampling_time_points.size(), 0.0);
     p84.resize(sampling_time_points.size(), 0.0);
     p97p5.resize(sampling_time_points.size(), 0.0);
+    n_valid.resize(sampling_time_points.size(),0);
+    n_single_10.resize(sampling_time_points.size(),0);
+    n_single_1.resize(sampling_time_points.size(),0);
     if(calculated_parameters.param.stable_izotope)
     {
         all_number_densities_stable.resize(calculated_parameters.param.number_of_runs, std::vector<double>(sampling_time_points.size(), 0.0));
@@ -880,6 +883,29 @@ void Create_events_and_calc_number_density::print_output_results(std::ofstream& 
     }
 }
 
+void Create_events_and_calc_number_density::calc_single_event_prob()
+{
+    for(std::size_t j=0; j < calculated_parameters.param.number_of_runs; j++)
+    {
+        for(std::size_t i = 0; i < sampling_time_points.size(); i++)
+        {
+            double total = all_number_densities[j][i];
+            double max_density = number_density_max_for_time[j][i];
+            if(max_density <=0.0) continue;
+            n_valid[i]++;
+            double other = total - max_density;
+            if(other <= 0.10 * max_density)
+            {
+                n_single_10[i]++;
+            }
+            if(other <= 0.01 * max_density)
+            {
+                n_single_1[i]++;
+            }
+        }
+    }
+}
+
 void Create_events_and_calc_number_density::calculate_statistics()
 {
     //std::vector<double> p16, median, p84, p2p5, p97p5;
@@ -1088,6 +1114,7 @@ void Create_events_and_calc_number_density::allEvent_number_densities_new()
             }
         //after all runs done: calculate statistics and print out results
         calculate_statistics();
+        calc_single_event_prob();
         print_output_results(res);
     }
     else
@@ -1137,6 +1164,7 @@ void Create_events_and_calc_number_density::allEvent_number_densities_new()
         std::cout << "Elapsed time for event generation and number density calculation: " << elapsed.count() << " seconds" << std::endl;
         //after all runs done: calculate statistics and print out results
         calculate_statistics();
+        calc_single_event_prob();
         print_output_results(res);
     }
     res.close();
