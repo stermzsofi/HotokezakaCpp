@@ -855,7 +855,7 @@ void Create_events_and_calc_number_density::print_output_results(std::ofstream& 
     {
         examples_number = all_number_densities.size();
     }
-    out << "#time\tmedian_based_Hotokezaka\tcalculated_median\tratedens\tp16\tp84\tp2.5\tp97.5\texamples";
+    out << "#time\tmedian_based_Hotokezaka\tcalculated_median\tratedens\tp16\tp84\tp2.5\tp97.5\tN_valid\tN_single_10\tN_single_1\texamples";
     if(calculated_parameters.param.stable_izotope)
     {
         out << "\tcalculated_median_stable\tp16_stable\tp84_stable\tp2.5_stable\tp97.5_stable\tstable_examples";
@@ -864,7 +864,10 @@ void Create_events_and_calc_number_density::print_output_results(std::ofstream& 
     //std::cout << mymedian.size() << "\t" << sampling_time_points.size() << std::endl;
     for(long unsigned int i = 0; i < sampling_time_points.size(); i++)
     {
-        out << sampling_time_points[i] << "\t" << median_number_densities[i] << "\t" << mymedian[i] << "\t" << calculated_parameters.param.rate_function->get_rate_density_at_t(sampling_time_points[i]) << "\t" << p16[i] << "\t" << p84[i] << "\t" << p2p5[i] << "\t" << p97p5[i];
+        out << sampling_time_points[i] << "\t" << median_number_densities[i] << "\t" << mymedian[i] << "\t" << 
+        calculated_parameters.param.rate_function->get_rate_density_at_t(sampling_time_points[i]) << "\t" << 
+        p16[i] << "\t" << p84[i] << "\t" << p2p5[i] << "\t" << p97p5[i] << "\t" << 
+        n_valid[i] << "\t" << n_single_10[i] << "\t" << n_single_1[i];
         //out << median_number_densities[i];
         
         for(long unsigned int j = 0; j < examples_number; j++)
