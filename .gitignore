@@ -20,3 +20,5 @@ time_redshift_test
 Trapezoidal_rule/.deps
 python/*.txt
 *.txt
+with_parallel*
+fit.log
