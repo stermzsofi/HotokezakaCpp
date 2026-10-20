@@ -693,7 +693,7 @@ void Create_events_and_calc_number_density::print_parameters_to_outputfile(std::
     out << "#element_initial_production_ratio\t" << calculated_parameters.param.element_initial_production_ratio << std::endl;
     out << "#Ni\t" << calculated_parameters.Ni << std::endl;
     out << "#-----------------------" << std::endl;
-    out << "Some important calculated parameters" << std::endl;
+    out << "#Some important calculated parameters" << std::endl;
     out << "#(calculated) number of events\t" << calculated_parameters.get_number_of_events() << std::endl;
     out << "#(calculated) taumix with r0\t" << calculated_parameters.taumix << std::endl;
     out << "#(calculated) neq with r0_rate_dens\t" << calculated_parameters.neq << std::endl;
